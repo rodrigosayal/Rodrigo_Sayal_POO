@@ -1,3 +1,2 @@
-turno_id,dni,fecha,servicio,duracion,estado
-1,34744153,19/11/2025,corte,45,activo
-2,34744156,22/12/2025,baño,60,cancelado
+turno_id,dni,fecha_hora,duracion,servicio,estado
+1,34744153,2025-11-20T15:00:00,60,corte,activo

@@ -1,71 +1,105 @@
+from datetime import timedelta
 from modelos.cliente import Cliente
 from modelos.turno import Turno
 from persistencia.manejador_csv import ManejadorCSV
 
+
 class GestorTurnos:
+
     def __init__(self):
-        # Cargo lo que ya estaba guardado
+                                                                                    # Diccionarios donde se guardan los datos
         self.clientes = ManejadorCSV.cargar_clientes("data/clientes.csv")
         self.turnos = ManejadorCSV.cargar_turnos("data/turnos.csv")
 
     
-    # VALIDACION DE DNI
-    
-    def validar_dni(self, dni_ingresado):
-        if not dni_ingresado.isdigit():
+    # VALIDAR DNI
+   
+    def validar_dni(self, dni):
+        if not dni.isdigit():
             return False
-        if len(dni_ingresado) < 7 or len(dni_ingresado) > 8:
+        if len(dni) < 7 or len(dni) > 8:
             return False
         return True
 
     
     # REGISTRAR CLIENTE
     
-    def registrar_cliente(self, dni_ingresado, nombre_completo, telefono_ingresado, email_ingresado=None):
+    def registrar_cliente(self, dni, nombre, telefono, email=""):
 
-        if not self.validar_dni(dni_ingresado):
-            return "El DNI no es válido."
+        if not self.validar_dni(dni):
+            return "DNI inválido."
 
-        if dni_ingresado in self.clientes:
+        if dni in self.clientes:
             return "Ese DNI ya está registrado."
 
-        datos_cliente = {
-            "dni": dni_ingresado,
-            "nombre": nombre_completo,
-            "telefono": telefono_ingresado,
-            "email": email_ingresado
+        datos = {
+            "dni": dni,
+            "nombre": nombre,
+            "telefono": telefono,
+            "email": email
         }
 
-        cliente_nuevo = Cliente(**datos_cliente)
-        self.clientes[dni_ingresado] = cliente_nuevo
+        nuevo_cliente = Cliente(**datos)
+        self.clientes[dni] = nuevo_cliente
 
         ManejadorCSV.guardar_clientes("data/clientes.csv", self.clientes)
 
-        return "Cliente registrado correctamente."
+        return "Cliente registrado."
+
+    
+    # REVISAR SI UN TURNO SE PISA CON OTRO
+    
+    def hay_superposicion(self, fecha_hora_nueva, duracion_nueva):
+
+        inicio_nuevo = fecha_hora_nueva
+        fin_nuevo = fecha_hora_nueva + timedelta(minutes=duracion_nueva)
+
+        for turno in self.turnos.values():
+
+            if turno.estado != "activo":
+                continue                                                                # los turnos cancelados no molestan
+
+            inicio_existente = turno.fecha_hora
+            fin_existente = turno.fecha_hora + timedelta(minutes=turno.duracion)
+
+                                                                                        # Si se pisa el horario
+            if inicio_nuevo < fin_existente and fin_nuevo > inicio_existente:
+                return True
+
+        return False
 
     
     # PEDIR TURNO
     
-    def pedir_turno(self, dni_ingresado, fecha_ingresada, servicio_elegido, duracion_minutos):
+    def pedir_turno(self, dni, fecha_hora, duracion, servicio):
 
-        if dni_ingresado not in self.clientes:
+        if dni not in self.clientes:
             return "Ese DNI no está registrado."
 
-        datos_turno = {
-            "dni": dni_ingresado,
-            "fecha": fecha_ingresada,
-            "servicio": servicio_elegido,
-            "duracion": duracion_minutos
+                                                                            # Control de superposición de horarios
+        if self.hay_superposicion(fecha_hora, duracion):
+            return "Ese horario ya está ocupado. Elegí otro."
+
+        nuevo_id = str(len(self.turnos) + 1)
+
+        datos = {
+            "turno_id": nuevo_id,
+            "dni": dni,
+            "fecha_hora": fecha_hora,
+            "duracion": duracion,
+            "servicio": servicio,
+            "estado": "activo"
         }
 
-        turno_nuevo = Turno(**datos_turno)
-        self.turnos[turno_nuevo.turno_id] = turno_nuevo
+        nuevo_turno = Turno(**datos)
+
+        self.turnos[nuevo_id] = nuevo_turno
 
         ManejadorCSV.guardar_turnos("data/turnos.csv", self.turnos)
 
-        return f"Turno creado. Número: {turno_nuevo.turno_id}"
+        return nuevo_turno
 
-   
+    
     # LISTAR CLIENTES
     
     def listar_clientes(self):
@@ -80,22 +114,39 @@ class GestorTurnos:
     
     # CANCELAR TURNO POR DNI
     
-    def cancelar_turno_por_dni(self, dni_ingresado):
+    def cancelar_turno(self, dni):
 
-        if dni_ingresado not in self.clientes:
-            return "Ese DNI no está registrado."
+        if dni not in self.clientes:
+            return "Ese DNI no existe."
 
-        turnos_del_cliente = []
+        turnos_cliente = [t for t in self.turnos.values() if t.dni == dni and t.estado == "activo"]
 
-        for turno in self.turnos.values():
-            if turno.dni == dni_ingresado:
-                turnos_del_cliente.append(turno)
+        if not turnos_cliente:
+            return "Ese cliente no tiene turnos activos."
 
-        if not turnos_del_cliente:
-            return "Este cliente no tiene turnos."
+                                                            # Si el cliente tiene solo un turno, lo cancela de una
+        if len(turnos_cliente) == 1:
+            turnos_cliente[0].estado = "cancelado"
+            ManejadorCSV.guardar_turnos("data/turnos.csv", self.turnos)
+            return "Turno cancelado."
 
-        for turno_en_lista in turnos_del_cliente:
-            turno_en_lista.estado = "cancelado"
+                                                            # Si tiene más de uno, mostramos lista
+        print("\nTurnos activos del cliente:")
+        for i, t in enumerate(turnos_cliente, start=1):
+            print(f"{i}) {t.fecha_hora} - {t.servicio}")
+
+        eleccion = input("Elegí cuál cancelar: ")
+
+        if not eleccion.isdigit():
+            return "Opción inválida."
+
+        eleccion = int(eleccion)
+
+        if eleccion < 1 or eleccion > len(turnos_cliente):
+            return "Opción inválida."
+
+        turno_elegido = turnos_cliente[eleccion - 1]
+        turno_elegido.estado = "cancelado"
 
         ManejadorCSV.guardar_turnos("data/turnos.csv", self.turnos)
 

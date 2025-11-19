@@ -1,22 +1,18 @@
 class Turno:
-    numero_turnos = 1   # contador simple para identificar turnos
+    def __init__(self, turno_id, dni, fecha_hora, duracion, servicio, estado="activo"):
+        self.turno_id = turno_id
+        self.dni = dni
+        self.fecha_hora = fecha_hora
+        self.duracion = duracion
+        self.servicio = servicio
+        self.estado = estado
 
-    def __init__(self, **datos):
-        self.turno_id = Turno.numero_turnos
-        Turno.numero_turnos += 1
-
-        self.dni = datos.get("dni")
-        self.fecha = datos.get("fecha")
-        self.servicio = datos.get("servicio")
-        self.duracion = datos.get("duracion")
-        self.estado = "activo"
-
-    def a_diccionario(self):
+    def a_dict(self):
         return {
             "turno_id": self.turno_id,
             "dni": self.dni,
-            "fecha": self.fecha,
-            "servicio": self.servicio,
+            "fecha_hora": self.fecha_hora.isoformat(),
             "duracion": self.duracion,
+            "servicio": self.servicio,
             "estado": self.estado
         }
