@@ -4,7 +4,7 @@ def main():
     gestor = GestorTurnos()
 
     while True:
-        print("\n========== SISTEMA DE TURNOS ==========")
+        print("\n========== SISTEMA DE TURNOS  DE RODRIGO SAYAL ==========")
         print("1) Registrar un cliente")
         print("2) Sacar un turno")
         print("3) Ver todos los clientes")
